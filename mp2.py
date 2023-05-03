@@ -124,6 +124,8 @@ class DecisionTree():
         '''
         # TODO: Implement the BestSplit function
         split_feature, split_value, split_ig = None, None, None
+
+        # Using Gini index
         return split_feature, split_value, split_ig
 
     def predict(self, data: pd.DataFrame) -> List[int]:
@@ -176,7 +178,8 @@ def run_train_test(training_data: pd.DataFrame, training_labels: pd.Series, test
     """
 
     #TODO implement the decision tree and return the prediction
-
+    training_tree = Node()
+    training_tree.fit(training_data, training_labels)
     return [1]*len(testing_data)
 
 ######################## evaluate the accuracy #################################
