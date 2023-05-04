@@ -111,6 +111,31 @@ class DecisionTree():
 
         return node
     
+    def GiniIndex(self, feature, data: pd.DataFrame, label: pd.Series):
+        split_value, split_ig = None, None
+        
+        col = data[feature].to_list()
+        col_values = col.unique()
+        total = len(col)
+
+        p, n = 0, 0        
+        for i in col_values:
+            indices =  [index for (index, item) in enumerate(col) if item == i]
+        
+            label_values = label[indices]
+            for i in label_values:
+                if i == 1:
+                    p += 1
+                elif i == 2:
+                    n += 1
+
+            imp = p/(p+n)
+
+            split_value += (len(label_values)/total) * 2 * (imp) * (1 - imp)
+
+        split_ig = 1 - split_value
+        return split_value, split_ig
+
     def BestSplit(self, data: pd.DataFrame, label: pd.Series):
         '''
             Given a data, select the best split by maximizing the information gain (maximizing the purity)
@@ -122,10 +147,17 @@ class DecisionTree():
                 split_value: value to split the data.
                 split_ig: information gain of the split.
         '''
-        # TODO: Implement the BestSplit function
         split_feature, split_value, split_ig = None, None, None
 
-        # Using Gini index
+        # Find BestSplit in loop
+        imp_min = 1
+
+        for col in data.columns:
+            split_value, split_ig = self.GiniIndex(col, data, label)
+            if split_value < imp_min:
+                imp_min = split_value
+                split_feature = col
+
         return split_feature, split_value, split_ig
 
     def predict(self, data: pd.DataFrame) -> List[int]:
@@ -180,7 +212,8 @@ def run_train_test(training_data: pd.DataFrame, training_labels: pd.Series, test
     #TODO implement the decision tree and return the prediction
     training_tree = Node()
     training_tree.fit(training_data, training_labels)
-    return [1]*len(testing_data)
+    test_pred = prediction(testing_data)
+    return test_pred
 
 ######################## evaluate the accuracy #################################
 
