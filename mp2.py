@@ -100,6 +100,8 @@ class DecisionTree():
 
                 #TODO Get the divided data and label based on the split feature and value, 
                 # and then recursively call GrowTree() to create left and right subtree.
+                
+
                 pass
 
             else:
@@ -118,6 +120,12 @@ class DecisionTree():
         col_values = col.unique()
         total = len(col)
 
+        p = 0
+        for i in label:
+            if i == 1:
+                p += 1
+        gini_orig = 1 - (2 * p/total * (1 - p/total))
+
         p, n = 0, 0        
         for i in col_values:
             indices =  [index for (index, item) in enumerate(col) if item == i]
@@ -133,7 +141,7 @@ class DecisionTree():
 
             split_value += (len(label_values)/total) * 2 * (imp) * (1 - imp)
 
-        split_ig = 1 - split_value
+        split_ig = gini_orig - split_value
         return split_value, split_ig
 
     def BestSplit(self, data: pd.DataFrame, label: pd.Series):
