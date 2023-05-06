@@ -218,9 +218,9 @@ def run_train_test(training_data: pd.DataFrame, training_labels: pd.Series, test
     """
 
     #TODO implement the decision tree and return the prediction
-    training_tree = Node()
+    training_tree = DecisionTree(10, 5)
     training_tree.fit(training_data, training_labels)
-    test_pred = prediction(testing_data)
+    test_pred = training_tree.predict(testing_data)
     return test_pred
 
 ######################## evaluate the accuracy #################################
