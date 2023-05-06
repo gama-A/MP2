@@ -114,9 +114,9 @@ class DecisionTree():
         return node
     
     def GiniIndex(self, feature, data: pd.DataFrame, label: pd.Series):
-        split_value, split_ig = None, None
+        split_value, split_ig = 0.0, 0.0
         
-        col = data[feature].to_list()
+        col = pd.Series(data[feature])
         col_values = col.unique()
         total = len(col)
 
