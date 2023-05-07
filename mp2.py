@@ -126,9 +126,15 @@ class DecisionTree():
 
             else:
                 # TODO: If it doesn't match IG condition, it is a leaf node
+                
+                node.is_leaf = True
+                node.prediction = max(label, key=label.count)
                 pass
         else:
             #TODO If it doesn't match depth or sample condition. It is a leaf node
+            
+            node.is_leaf = True
+            node.prediction = max(label, key=label.count)
             pass
 
         return node
@@ -164,7 +170,7 @@ class DecisionTree():
         predictions = []
         # TODO: Implement the predict function
         node = self.root
-        feature = node.split_feature
+        
 
         return predictions
     
