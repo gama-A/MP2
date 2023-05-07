@@ -101,7 +101,27 @@ class DecisionTree():
                 #TODO Get the divided data and label based on the split feature and value, 
                 # and then recursively call GrowTree() to create left and right subtree.
                 
+                col = pd.Series(data[node.split_feature])
+                data = data.drop(node.split_feature, axis=1)
+                
+                l_data = pd.DataFrame()
+                r_data = pd.DataFrame()
 
+                l_labels = label.copy()
+                r_labels = label.copy()
+
+                for i in range(col):
+                    if i < node.split_value:
+                        # left data
+                        l_data = pd.concat([l_data, data.iloc[i]])
+                        l_labels.pop(i)
+                    else:
+                        # right data
+                        r_data = pd.concat([r_data, data.iloc[i]])
+                        r_labels.pop(i)
+
+                node.left = self.GrowTree(l_data, l_labels, counter)
+                node.right = self.GrowTree(r_data, r_labels, counter)
                 pass
 
             else:
@@ -113,36 +133,6 @@ class DecisionTree():
 
         return node
     
-    def GiniIndex(self, feature, data: pd.DataFrame, label: pd.Series):
-        split_value, split_ig = 0.0, 0.0
-        
-        col = pd.Series(data[feature])
-        col_values = col.unique()
-        total = len(col)
-
-        p = 0
-        for i in label:
-            if i == 1:
-                p += 1
-        gini_orig = 1 - (2 * p/total * (1 - p/total))
-
-        p, n = 0, 0        
-        for i in col_values:
-            indices =  [index for (index, item) in enumerate(col) if item == i]
-        
-            label_values = label[indices]
-            for i in label_values:
-                if i == 1:
-                    p += 1
-                elif i == 2:
-                    n += 1
-
-            imp = p/(p+n)
-
-            split_value += (len(label_values)/total) * 2 * (imp) * (1 - imp)
-
-        split_ig = gini_orig - split_value
-        return split_value, split_ig
 
     def BestSplit(self, data: pd.DataFrame, label: pd.Series):
         '''
@@ -160,11 +150,6 @@ class DecisionTree():
         # Find BestSplit in loop
         imp_min = 1
 
-        for col in data.columns:
-            split_value, split_ig = self.GiniIndex(col, data, label)
-            if split_value < imp_min:
-                imp_min = split_value
-                split_feature = col
 
         return split_feature, split_value, split_ig
 
@@ -178,6 +163,9 @@ class DecisionTree():
         '''
         predictions = []
         # TODO: Implement the predict function
+        node = self.root
+        feature = node.split_feature
+
         return predictions
     
     def print_tree(self):
