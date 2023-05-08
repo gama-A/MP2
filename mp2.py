@@ -153,10 +153,37 @@ class DecisionTree():
         '''
         split_feature, split_value, split_ig = None, None, None
 
-        # Find BestSplit in loop
-        imp_min = 1
+        # Find BestSplit using Gini Gain, split_ig will represent node Gini Gain
 
+        v = label.value_counts()
+        c1 = v[1]
+        c2 = label.size() - c1
+        node_gini = 2 * (c1 / label.size()) * (c2 / label.size())
 
+        columns = data.columns()
+
+        gini_gain = 0.0
+        for c in columns:
+            # Get unique values from column to calculate each gini gain
+            feature_values = data[c].to_list()
+            num_unique = data[c].unique()
+            gini = 0
+            for v in feature_values:
+                indices = [index for (index, item) in enumerate(feature_values) if item == v]
+                label_results = label[indices]
+                dead = 0
+                for i in label_results:
+                    if i == 1:
+                        dead += 1
+                
+                gini += 2 * (dead / label_results.size()) * (1 - (dead / label_results.size()))
+
+            ngg = node_gini - gini
+            if ngg > gini_gain:
+                gini_gain = ngg
+                split_feature = c
+
+        split_ig = gini_gain
         return split_feature, split_value, split_ig
 
     def predict(self, data: pd.DataFrame) -> List[int]:
