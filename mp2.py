@@ -88,11 +88,11 @@ class DecisionTree():
         
         if depth_cond & sample_cond:
 
-            split_feature, split_value, ig = self.BestSplit(data, label)
+            split_feature, split_value, ig, split_indices = self.BestSplit(data, label)
             node.ig = ig
 
             # Check for ig condition. If ig condition is fulfilled, make split 
-            if ig is not None and ig >= self.min_information_gain:
+            if ig != 0.0 and ig >= self.min_information_gain:
 
                 node.split_feature = split_feature
                 node.split_value = split_value
@@ -100,25 +100,19 @@ class DecisionTree():
 
                 #TODO Get the divided data and label based on the split feature and value, 
                 # and then recursively call GrowTree() to create left and right subtree.
-                
-                col = pd.Series(data[node.split_feature])
-                data = data.drop(node.split_feature, axis=1)
-                
-                l_data = pd.DataFrame()
-                r_data = pd.DataFrame()
 
-                l_labels = label.copy()
-                r_labels = label.copy()
+                data = data.drop(node.split_feature, axis=1) 
 
-                for i in range(col):
-                    if i < node.split_value:
-                        # left data
-                        l_data = pd.concat([l_data, data.iloc[i]])
-                        l_labels.pop(i)
-                    else:
-                        # right data
-                        r_data = pd.concat([r_data, data.iloc[i]])
-                        r_labels.pop(i)
+                l_data = data.iloc[split_indices]
+                r_data = data.drop(split_indices, axis=0)
+
+                l_labels = label.iloc[split_indices]
+                r_labels = label.drop(split_indices, axis=0)
+
+                l_data.reset_index(inplace=True, drop=True)
+                r_data.reset_index(inplace=True, drop=True)
+                l_labels.reset_index(inplace=True, drop=True)
+                r_labels.reset_index(inplace=True, drop=True)
 
                 node.left = self.GrowTree(l_data, l_labels, counter)
                 node.right = self.GrowTree(r_data, r_labels, counter)
@@ -128,13 +122,17 @@ class DecisionTree():
                 # TODO: If it doesn't match IG condition, it is a leaf node
                 
                 node.is_leaf = True
-                node.prediction = max(label, key=label.count)
+                values = label.value_counts()
+                max_v = values.max()
+                node.prediction = values[values == max_v].index[0]
                 pass
         else:
             #TODO If it doesn't match depth or sample condition. It is a leaf node
             
             node.is_leaf = True
-            node.prediction = max(label, key=label.count)
+            values = label.value_counts()
+            max_v = values.max()
+            node.prediction = values[values == max_v].index[0]
             pass
 
         return node
@@ -151,40 +149,61 @@ class DecisionTree():
                 split_value: value to split the data.
                 split_ig: information gain of the split.
         '''
-        split_feature, split_value, split_ig = None, None, None
+        split_feature, split_value, split_ig = None, None, 0.0
+        less_than_indices = None
 
         # Find BestSplit using Gini Gain, split_ig will represent node Gini Gain
 
-        v = label.value_counts()
-        c1 = v[1]
-        c2 = label.size() - c1
-        node_gini = 2 * (c1 / label.size()) * (c2 / label.size())
+        root_node_gini = 2 * (label[label == 1].count()/ label.size) * (1 - (label[label == 1].count()/label.size))
+        if root_node_gini == 0.0:
+            return split_feature, split_value, split_ig, less_than_indices
 
-        columns = data.columns()
+        for col in data.columns:
+            fv = data[col].unique()
+            
+            for v in fv:
+                gini_gain = root_node_gini
+                indices_1 = list(np.where(data[col] <= v)[0])
+                indices_2 = list(np.where(data[col] > v)[0])
 
-        gini_gain = 0.0
-        for c in columns:
-            # Get unique values from column to calculate each gini gain
-            feature_values = data[c].to_list()
-            num_unique = data[c].unique()
-            gini = 0
-            for v in feature_values:
-                indices = [index for (index, item) in enumerate(feature_values) if item == v]
-                label_results = label[indices]
-                dead = 0
-                for i in label_results:
-                    if i == 1:
-                        dead += 1
+                deaths1= 0
+                for i in data.iloc[indices_1].index.to_list():
+                    if label[i] == 1:
+                        deaths1 += 1
                 
-                gini += 2 * (dead / label_results.size()) * (1 - (dead / label_results.size()))
+                deaths2 = 0
+                for j in data.iloc[indices_2].index.to_list():
+                    if label[j] == 1:
+                        deaths2 += 1
+                    
+                if len(indices_1) == 0:
+                    p1 = 1
+                else:
+                    p1 = deaths1 / len(indices_1)
+                if len(indices_2) == 0:
+                    p2 = 1
+                else:
+                    p2 = deaths2 / len(indices_2)
+                gini_gain -= (2 * p1 * (1-p1)) * (len(indices_1) / label.size) - (2 * p2 * (1-p2)) * (len(indices_2) / label.size)
 
-            ngg = node_gini - gini
-            if ngg > gini_gain:
-                gini_gain = ngg
-                split_feature = c
+                if gini_gain > split_ig:
+                    split_ig = gini_gain
+                    split_feature = col
+                    split_value = v
+                    less_than_indices = indices_1
 
-        split_ig = gini_gain
-        return split_feature, split_value, split_ig
+
+        return split_feature, split_value, split_ig, less_than_indices
+
+    def FindLeaf(self, node: Node, row: pd.Series) -> Node:
+        if (node.is_leaf == True):
+            return node
+        else:
+            row_val = row[node.split_feature]
+            if row_val <= node.split_value:
+                return self.FindLeaf(node.left, row)
+            else:
+                return self.FindLeaf(node.right, row)
 
     def predict(self, data: pd.DataFrame) -> List[int]:
         '''
@@ -198,6 +217,9 @@ class DecisionTree():
         # TODO: Implement the predict function
         node = self.root
         
+        for i in range(len(data)):
+            leaf = self.FindLeaf(node, data.loc[i])
+            predictions.append(leaf.prediction)
 
         return predictions
     
@@ -239,7 +261,7 @@ def run_train_test(training_data: pd.DataFrame, training_labels: pd.Series, test
     """
 
     #TODO implement the decision tree and return the prediction
-    training_tree = DecisionTree(10, 5)
+    training_tree = DecisionTree(16, 5, 0.1)
     training_tree.fit(training_data, training_labels)
     test_pred = training_tree.predict(testing_data)
     return test_pred
